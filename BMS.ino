@@ -5,11 +5,19 @@
 
 extern volatile uint32_t pwmDuration;
 
+// getter prototypes
 float getCellVoltage(int cell);
 float getCellTemp(int cell);
 float getPackCurrent();
 float getPackVoltage();
 void setBalancing();
+
+// VCU setter Prototypes
+void setWarningUndervoltage(bool state);
+void setWarningOvervoltage(bool state);
+void setWarningOvertemp(bool state);
+void setWarningOvertemp(bool state);
+
 
 
 class Dataclass{
@@ -20,14 +28,21 @@ class Dataclass{
     double packVoltage;
 
     void updateData(){
-      updateCellVoltages();      
-  }
+      updateCellVoltages();  
+      updateCellTemp();
+      updatePackCurrent();
+      updatePackVoltage();
+      Serial.println("Data updated");
+    }
 
   private:
     void updateCellVoltages(){
+      
       for(int i = 0; i<4;i++){
        cellVoltages[i] = getCellVoltage(i+1);
       }
+
+      Serial.println("Cell voltages updated");
     }
 
     void updateCellTemp(){
@@ -45,21 +60,49 @@ class Dataclass{
     }
 };
 
-class Safety:Dataclass {
+class Safety: protected Dataclass {
   private:
     
 
   public:
 
     void checkForVoltageOutOfRange(){
+      updateData();
+      for(int i=0; i++; i<4){
+        Serial.println("Hello");
+        if(cellVoltages[i] < 2.5){
+
+          setWarningUndervoltage(true);
+          return;
+        }
+        if(cellVoltages[i] > 4.2){
+          setWarningOvervoltage(true);
+          return;
+        }        
+      }
+      setWarningUndervoltage(false);
+      setWarningOvervoltage(false);
     }
+
+    void checkForOverTemp(){
+      updateData();
+      updateData();
+      for(int i=0; i++; i<4){
+        if(cellTemp[i] > 50 || cellTemp[i] < 15){
+          setWarningOvertemp(true);
+          return;
+        }
+      }
+      setWarningOvertemp(false);
+
+    } 
 };
 
-class Balancing:Dataclass{
+class Balancing: protected Dataclass{
 
 };
 
-Dataclass data;
+Safety safetyController;
 
 
 void setup() {
@@ -74,7 +117,10 @@ void loop() {
   receiveAndParseCommands();   // Empfängt Befehle über den Serial Monitor und führt diese aus
   
   showMeasurementValues();   // Stellt Messwerte numerisch dar
-  //drawMeasurementCurves(10); // Messkurven - Parameter defines Minutes for full scale of X-Axis
-  showOCVcurve();
+  drawMeasurementCurves(10); // Messkurven - Parameter defines Minutes for full scale of X-Axis
+  //showOCVcurve();
+
+  safetyController.checkForVoltageOutOfRange();
+
            // Stellt OCV Kurve der Li-Ionen Zellen dar
 }
