@@ -32,7 +32,7 @@ class Dataclass{
       updateCellTemp();
       updatePackCurrent();
       updatePackVoltage();
-      Serial.println("Data updated");
+
     }
 
   private:
@@ -60,16 +60,16 @@ class Dataclass{
     }
 };
 
-class Safety: protected Dataclass {
+class Safety:protected Dataclass{
   private:
-    
 
   public:
 
     void checkForVoltageOutOfRange(){
       updateData();
-      for(int i=0; i++; i<4){
-        Serial.println("Hello");
+
+
+      for(int i = 0; i<4; i++){
         if(cellVoltages[i] < 2.5){
 
           setWarningUndervoltage(true);
@@ -94,12 +94,12 @@ class Safety: protected Dataclass {
         }
       }
       setWarningOvertemp(false);
-
     } 
 };
 
-class Balancing: protected Dataclass{
 
+class Balancing: protected Dataclass{
+  
 };
 
 Safety safetyController;
@@ -107,8 +107,6 @@ Safety safetyController;
 
 void setup() {
   setupBSW();
-  
-
 }
 
 void loop() { 
@@ -121,6 +119,9 @@ void loop() {
   //showOCVcurve();
 
   safetyController.checkForVoltageOutOfRange();
+  //setWarningUndervoltage(true);
+
+  delay(500);
 
            // Stellt OCV Kurve der Li-Ionen Zellen dar
 }
