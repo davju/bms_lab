@@ -65,6 +65,8 @@ class Safety:protected Dataclass{
     unsigned long overcurrentTimeSum = 0;
     unsigned long timeIntervallStart;
     unsigned long triggerTimeUndervoltage;
+    bool undervoltageTriggered;
+    bool overvoltageTriggered;
     unsigned long triggerTimeOvervoltage;
 
     bool timeIntervallTriggerd;
@@ -75,11 +77,18 @@ class Safety:protected Dataclass{
       updateData();
       for(int i = 0; i<4; i++){
         if(cellVoltages[i] < 2.5){
-          
-          triggerTimeUndervoltage = millis();
 
-          if(millis() - triggerTimeUndervoltage > 3000){
-            setBDU_Activation(false);
+          if(!undervoltageTriggered){
+            triggerTimeUndervoltage = millis();  
+            undervoltageTriggered = true;            
+          }
+          
+
+          unsigned long timedelta = millis() - triggerTimeUndervoltage;
+
+          Serial.println(timedelta);
+          if(timedelta > 3000){
+            setBDU_Activation(true);
             return;
           }
 
@@ -89,9 +98,15 @@ class Safety:protected Dataclass{
         }
 
         if(cellVoltages[i] > 4.2){
-          triggerTimeOvervoltage = millis();
 
-          if(millis() - triggerTimeOvervoltage > 3000){
+          if(!undervoltageTriggered){
+            triggerTimeOvervoltage = millis();
+              overvoltageTriggered = true;            
+          }
+          
+          unsigned long timedelta = millis() - triggerTimeUndervoltage;
+
+          if(timedelta > 3000){
             setBDU_Activation(false);
             return;
           }
@@ -101,6 +116,9 @@ class Safety:protected Dataclass{
       }
       setWarningUndervoltage(false);
       setWarningOvervoltage(false);
+      setBDU_Activation(true);
+      undervoltageTriggered = false;
+      overvoltageTriggered = false;
     }
 
     void checkForOverTemp(){
@@ -221,6 +239,6 @@ void loop() {
       safetyController.checkForVoltageOutOfRange();
       safetyController.checkForOverTemp();
       safetyController.checkForOvercurrent();
-      balancer.checkForBalancing();  
+      balancer.checkForBalancing(); 
   }
 }
