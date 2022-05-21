@@ -16,7 +16,8 @@ void setBalancing();
 void setWarningUndervoltage(bool state);
 void setWarningOvervoltage(bool state);
 void setWarningOvertemp(bool state);
-void setWarningOvertemp(bool state);
+void setBDU_Activation(bool state);
+void setBalancing(int cell);
 
 
 
@@ -60,20 +61,40 @@ class Dataclass{
 
 class Safety:protected Dataclass{
   private:
+    unsigned long triggerTime2MinIntervall;
+    unsigned long overcurrentTimeSum = 0;
+    unsigned long timeIntervallStart;
+    unsigned long triggerTimeUndervoltage;
+    unsigned long triggerTimeOvervoltage;
+
+    bool timeIntervallTriggerd;
 
   public:
 
     void checkForVoltageOutOfRange(){
       updateData();
-
-
       for(int i = 0; i<4; i++){
         if(cellVoltages[i] < 2.5){
+          
+          triggerTimeUndervoltage = millis();
+
+          if(millis() - triggerTimeUndervoltage > 3000){
+            setBDU_Activation(false);
+            return;
+          }
 
           setWarningUndervoltage(true);
+          
           return;
         }
+
         if(cellVoltages[i] > 4.2){
+          triggerTimeOvervoltage = millis();
+
+          if(millis() - triggerTimeOvervoltage > 3000){
+            setBDU_Activation(false);
+            return;
+          }
           setWarningOvervoltage(true);
           return;
         }        
@@ -85,21 +106,50 @@ class Safety:protected Dataclass{
     void checkForOverTemp(){
       updateData();
       for(int i=0; i++; i<4){
-        if(cellTemp[i] > 50 || cellTemp[i] < 15){
+        if(cellTemp[i] > 60){
           setWarningOvertemp(true);
           return;
         }
       }
       setWarningOvertemp(false);
+    }
+
+    void checkForOvercurrent(){
+      updateData();
+
+      if(packCurrent >= 400){
+
+          if(!timeIntervallTriggerd){
+            timeIntervallStart = millis();
+            timeIntervallTriggerd = true;
+          }        
+
+          triggerTime2MinIntervall = millis();
+          unsigned long buffer;
+
+          while(packCurrent >= 400){
+            updateData();
+            buffer = millis() - triggerTime2MinIntervall;
+            if((buffer + overcurrentTimeSum)/(millis() - timeIntervallStart) >= 0.2 ){
+              setBDU_Activation(false);
+              timeIntervallStart = 0;
+              overcurrentTimeSum = 0;
+              return;
+            }
+          }
+          
+          overcurrentTimeSum = overcurrentTimeSum + buffer;
+          
+      }
     } 
 };
-
 
 class Balancing: protected Dataclass{
   private:
     double sortedArray[4];
+    int cellPosition[4] = {1,2,3,4};
     double cellDrift;
-    unsigned long triggerTime;
+    unsigned long triggerTime2MinIntervall;
 
     void calculateCellDrift(){
         copy();
@@ -115,14 +165,17 @@ class Balancing: protected Dataclass{
 
     void sort(){
       double temp;
-      int j, i;
+      int j, i, tempPosition;
       
-      for(i = 0; i<10; i++) {
-        for(j = i+1; j<10; j++){
+      for(i = 0; i<4; i++) {
+        for(j = i+1; j<4; j++){
           if(sortedArray[j] < sortedArray[i]){
             temp = sortedArray[i];
+            tempPosition = cellPosition[i];
             sortedArray[i] = sortedArray[j];
+            cellPosition[i] = cellPosition[j];
             sortedArray[j] = temp;
+            cellPosition[j] = tempPosition;
           }
         }
       }
@@ -130,12 +183,15 @@ class Balancing: protected Dataclass{
 
     public:
       void checkForBalancing(){
+        updateData();
         calculateCellDrift();
 
-        while(cellDrift > 0.2){
-          calculateCellDrift();
+        if(cellDrift >= 0.3){
+          setBalancing(cellPosition[3]);
+        }else if(cellDrift <= 0.1){
+          setBalancing(0);
         }
-      }
+    }
 };
 
 
@@ -148,7 +204,9 @@ void setup() {
 }
 
 void loop() { 
+
   static uint32_t oldtime = millis();
+
   setBDU_Activation(true);   // schaltet BDU ein
   setDriveMode(1);           // 1-Cycle Test 2-Slow Driver 3-Fast Driver 4-Power Mode
   receiveAndParseCommands();   // Empfängt Befehle über den Serial Monitor und führt diese aus
@@ -157,18 +215,12 @@ void loop() {
   drawMeasurementCurves(10); // Messkurven - Parameter defines Minutes for full scale of X-Axis
   //showOCVcurve();
 
-  safetyController.checkForVoltageOutOfRange();
-  safetyController.checkForOverTemp();
 
-  if((millis()-oldtime)>10){
+  if((millis()-oldtime)>100){
       oldtime = millis();
-      Serial.println("Sucess"); 
+      safetyController.checkForVoltageOutOfRange();
+      safetyController.checkForOverTemp();
+      safetyController.checkForOvercurrent();
+      balancer.checkForBalancing();  
   }
-
-
-  //setWarningUndervoltage(true);
-  
-  delay(1);
-
-           // Stellt OCV Kurve der Li-Ionen Zellen dar
 }
