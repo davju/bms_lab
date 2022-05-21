@@ -223,7 +223,8 @@ void setup() {
 
 void loop() { 
 
-  static uint32_t oldtime = millis();
+  static uint32_t oldTimeSafety = millis();
+  static uint32_t oldtimeBalancing = millis();
 
   setBDU_Activation(true);   // schaltet BDU ein
   setDriveMode(1);           // 1-Cycle Test 2-Slow Driver 3-Fast Driver 4-Power Mode
@@ -233,12 +234,16 @@ void loop() {
   drawMeasurementCurves(10); // Messkurven - Parameter defines Minutes for full scale of X-Axis
   //showOCVcurve();
 
-
-  if((millis()-oldtime)>100){
-      oldtime = millis();
+  if((millis()-oldTimeSafety)>100){
+      oldTimeSafety = millis();
       safetyController.checkForVoltageOutOfRange();
       safetyController.checkForOverTemp();
       safetyController.checkForOvercurrent();
-      balancer.checkForBalancing(); 
+      
+  }
+
+  if(millis()-oldtimeBalancing > 1000){
+    oldtimeBalancing = millis();
+    balancer.checkForBalancing();
   }
 }
