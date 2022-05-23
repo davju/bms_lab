@@ -33,7 +33,6 @@ class Dataclass{
       updateCellTemp();
       updatePackCurrent();
       updatePackVoltage();
-
     }
 
   private:
@@ -63,16 +62,14 @@ class Safety:protected Dataclass{
   private:
     unsigned long triggerTime2MinIntervall;
     unsigned long overcurrentTimeSum = 0;
-    unsigned long timeIntervallStart;
+    unsigned long timeIntervall10minStart;
     unsigned long triggerTimeUndervoltage;
     bool undervoltageTriggered;
     bool overvoltageTriggered;
     unsigned long triggerTimeOvervoltage;
-
     bool timeIntervallTriggerd;
 
   public:
-
     void checkForVoltageOutOfRange(){
       updateData();
       for(int i = 0; i<4; i++){
@@ -81,12 +78,11 @@ class Safety:protected Dataclass{
           if(!undervoltageTriggered){
             triggerTimeUndervoltage = millis();  
             undervoltageTriggered = true;            
-          }
+          } 
           
 
           unsigned long timedelta = millis() - triggerTimeUndervoltage;
 
-          Serial.println(timedelta);
           if(timedelta > 3000){
             setBDU_Activation(true);
             return;
@@ -99,7 +95,7 @@ class Safety:protected Dataclass{
 
         if(cellVoltages[i] > 4.2){
 
-          if(!undervoltageTriggered){
+          if(!overvoltageTriggered){
             triggerTimeOvervoltage = millis();
               overvoltageTriggered = true;            
           }
@@ -112,7 +108,8 @@ class Safety:protected Dataclass{
           }
           setWarningOvervoltage(true);
           return;
-        }        
+        }
+
       }
       setWarningUndervoltage(false);
       setWarningOvervoltage(false);
@@ -124,7 +121,8 @@ class Safety:protected Dataclass{
     void checkForOverTemp(){
       updateData();
       for(int i=0; i++; i<4){
-        if(cellTemp[i] > 60){
+        Serial.println("Test");
+        if(cellTemp[i] > 40){
           setWarningOvertemp(true);
           return;
         }
@@ -138,9 +136,17 @@ class Safety:protected Dataclass{
       if(packCurrent >= 400){
 
           if(!timeIntervallTriggerd){
-            timeIntervallStart = millis();
+            timeIntervall10minStart = millis();
+            overcurrentTimeSum = 0; 
             timeIntervallTriggerd = true;
-          }        
+          } 
+
+          if(timeIntervall10minStart >= 10000){
+            timeIntervallTriggerd = false;
+            return;
+          }
+
+              
 
           triggerTime2MinIntervall = millis();
           unsigned long buffer;
@@ -148,10 +154,11 @@ class Safety:protected Dataclass{
           while(packCurrent >= 400){
             updateData();
             buffer = millis() - triggerTime2MinIntervall;
-            if((buffer + overcurrentTimeSum)/(millis() - timeIntervallStart) >= 0.2 ){
+            if(buffer + overcurrentTimeSum > 2000){
               setBDU_Activation(false);
-              timeIntervallStart = 0;
+              timeIntervall10minStart = 0;
               overcurrentTimeSum = 0;
+              timeIntervallTriggerd = false;
               return;
             }
           }
@@ -203,12 +210,12 @@ class Balancing: protected Dataclass{
       void checkForBalancing(){
         updateData();
         calculateCellDrift();
-
-        if(cellDrift >= 0.3){
+        if(sortedArray[3] > 4.1 && cellDrift >= 0.3){
           setBalancing(cellPosition[3]);
-        }else if(cellDrift <= 0.1){
-          setBalancing(0);
-        }
+          return; 
+        }         
+        setBalancing(0);
+        
     }
 };
 
@@ -226,15 +233,15 @@ void loop() {
   static uint32_t oldTimeSafety = millis();
   static uint32_t oldtimeBalancing = millis();
 
-  setBDU_Activation(true);   // schaltet BDU ein
-  setDriveMode(1);           // 1-Cycle Test 2-Slow Driver 3-Fast Driver 4-Power Mode
+  setBDU_Activation(true);   // schaltet BDU ein           // 1-Cycle Test 2-Slow Driver 3-Fast Driver 4-Power Mode
   receiveAndParseCommands();   // Empfängt Befehle über den Serial Monitor und führt diese aus
   
   showMeasurementValues();   // Stellt Messwerte numerisch dar
   drawMeasurementCurves(10); // Messkurven - Parameter defines Minutes for full scale of X-Axis
   //showOCVcurve();
 
-  if((millis()-oldTimeSafety)>100){
+
+  if((millis()-oldTimeSafety) > 100){
       oldTimeSafety = millis();
       safetyController.checkForVoltageOutOfRange();
       safetyController.checkForOverTemp();
