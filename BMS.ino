@@ -141,7 +141,7 @@ class Safety:protected Dataclass{
             timeIntervallTriggerd = true;
           } 
 
-          if(timeIntervall10minStart >= 10000){
+          if(timeIntervall10minStart >= 600000){
             timeIntervallTriggerd = false;
             return;
           }
@@ -154,7 +154,7 @@ class Safety:protected Dataclass{
           while(packCurrent >= 400){
             updateData();
             buffer = millis() - triggerTime2MinIntervall;
-            if(buffer + overcurrentTimeSum > 2000){
+            if(buffer + overcurrentTimeSum > 12000){
               setBDU_Activation(false);
               timeIntervall10minStart = 0;
               overcurrentTimeSum = 0;
@@ -162,7 +162,7 @@ class Safety:protected Dataclass{
               return;
             }
           }
-          
+
           overcurrentTimeSum = overcurrentTimeSum + buffer;
           
       }
@@ -226,14 +226,14 @@ Balancing balancer;
 
 void setup() {
   setupBSW();
+  setBDU_Activation(true); 
 }
 
 void loop() { 
 
   static uint32_t oldTimeSafety = millis();
   static uint32_t oldtimeBalancing = millis();
-
-  setBDU_Activation(true);   // schaltet BDU ein           // 1-Cycle Test 2-Slow Driver 3-Fast Driver 4-Power Mode
+     // schaltet BDU ein           // 1-Cycle Test 2-Slow Driver 3-Fast Driver 4-Power Mode
   receiveAndParseCommands();   // Empfängt Befehle über den Serial Monitor und führt diese aus
   
   showMeasurementValues();   // Stellt Messwerte numerisch dar
