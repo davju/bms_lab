@@ -206,7 +206,7 @@ class Balancing: protected Dataclass{
       }
     } 
 
-  public:
+    public:
       void checkForBalancing(){
         updateData();
         calculateCellDrift();
@@ -226,6 +226,7 @@ Balancing balancer;
 
 void setup() {
   setupBSW();
+<<<<<<< HEAD
   setBDU_Activation(true);
 }
 
@@ -233,6 +234,7 @@ void loop() {
 
   static uint32_t oldTimeSafety = millis();
   static uint32_t oldtimeBalancing = millis();
+<<<<<<< HEAD
 
   receiveAndParseCommands();   // Empfängt Befehle über den Serial Monitor und führt diese aus
   
