@@ -206,7 +206,7 @@ class Balancing: protected Dataclass{
       }
     } 
 
-    public:
+  public:
       void checkForBalancing(){
         updateData();
         calculateCellDrift();
